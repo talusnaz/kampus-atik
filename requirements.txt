@@ -1,0 +1,4 @@
+flask
+gunicorn
+pillow
+rapidocr-onnxruntime

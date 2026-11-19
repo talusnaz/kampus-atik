@@ -1,0 +1,5 @@
+venv/
+ocr_bin
+__pycache__/
+*.log
+.DS_Store
