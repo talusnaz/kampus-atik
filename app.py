@@ -6,7 +6,7 @@ app = Flask(__name__)
 DB_FILE = "products.json"
 PRODUCTS = {
     "8681413502057": {"name": "Mila Su 0.5L", "bin": "SARI", "type": "Plastik (PET)", "tip": "Kapagi ayirip siseyi ezerek atin.", "grams": 18, "co2": 45},
-    "8690504016502": {"name": "Ulker Cikolatali Gofret", "bin": "SARI", "type": "Plastik Ambalaj", "tip": "Icinde gida artigi birakmadan atin.", "grams": 5, "co2": 12},
+    "8681630429533": {"name": "Züber Ice Tea", "bin": "SARI", "type": "Metal / Aluminyum", "tip": "Icinde gida artigi birakmadan atin.", "grams": 12, "co2": 97},
     "5449000000996": {"name": "Coca-Cola Kutu 330ml", "bin": "SARI", "type": "Metal / Aluminyum", "tip": "Siviyi bosaltip kutuyu sikistirin.", "grams": 14, "co2": 110},
     "8690624101011": {"name": "Meyve Suyu Karton 200ml", "bin": "MAVI", "type": "Kagit / Kompozit", "tip": "Pipeti cikarip Mavi kutuya atin.", "grams": 12, "co2": 22},
 }
