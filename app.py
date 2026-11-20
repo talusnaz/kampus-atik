@@ -7,6 +7,8 @@ app = Flask(__name__)
 PRODUCTS = {
     "8681413502057": {"name": "Mila Su 0.5L", "bin": "SARI", "type": "Plastik (PET)", "tip": "Kapagi ayirip siseyi ezerek Sari kutuya atin.", "grams": 18, "co2": 45},
     "8690525060478": {"name": "Pınar Su", "bin": "SARI", "type": "Plastik (PET)", "tip": "Siviyi bosaltip siseyi sikistirarak Sari kutuya atin.", "grams": 14, "co2": 110},
+    "8690525060010": {"name": "Pınar Su 0.5L", "bin": "SARI", "type": "Plastik (PET)", "tip": "Siviyi bosaltip siseyi sikistirarak Sari kutuya atin.", "grams": 14, "co2": 110},
+    "8690525060027": {"name": "Pınar Su 1.5L", "bin": "SARI", "type": "Plastik (PET)", "tip": "Siviyi bosaltip siseyi sikistirarak Sari kutuya atin.", "grams": 28, "co2": 180},
     "8681630429533": {"name": "Züber Ice Tea", "bin": "MAVI", "type": "Metal / Aluminyum", "tip": "Icinde sivi birakmadan Mavi metal kutusuna atin.", "grams": 12, "co2": 97},
     "8690624101011": {"name": "Meyve Suyu Karton 200ml", "bin": "KIRMIZI", "type": "Kagit / Karton", "tip": "Pipeti cikarip Kirmizi kagit kutusuna atin.", "grams": 12, "co2": 22},
 }
@@ -21,7 +23,25 @@ state = {
     "total_co2": 0,
     "contaminated_prevented": 0
 }
+
 rapid_engine = None
+try:
+    from rapidocr_onnxruntime import RapidOCR
+    rapid_engine = RapidOCR()
+except Exception:
+    rapid_engine = None
+
+def lookup_product(code):
+    c = re.sub(r"\D", "", str(code or ""))
+    if not c:
+        return None
+    if c in PRODUCTS:
+        return PRODUCTS[c]
+    if c.startswith("8690525") and len(c) >= 12:
+        return PRODUCTS["8690525060478"]
+    if c.startswith("8681413") and len(c) >= 12:
+        return PRODUCTS["8681413502057"]
+    return None
 
 def run_ocr(img_path):
     global rapid_engine
@@ -29,8 +49,8 @@ def run_ocr(img_path):
     if sys.platform == "darwin" and os.path.exists(ocr_bin):
         return subprocess.check_output([ocr_bin, img_path], stderr=subprocess.DEVNULL, text=True)
     try:
-        from rapidocr_onnxruntime import RapidOCR
         if rapid_engine is None:
+            from rapidocr_onnxruntime import RapidOCR
             rapid_engine = RapidOCR()
         res, _ = rapid_engine(img_path)
         return "\n".join([line[1] for line in res]) if res else ""
@@ -42,6 +62,9 @@ def find_code(text):
     for c in PRODUCTS:
         if c in digits:
             return c
+    m_pinar = re.search(r"8690525\d{5,6}", digits)
+    if m_pinar:
+        return m_pinar.group(0)
     for c in PRODUCTS:
         n = len(c)
         for i in range(max(0, len(digits) - n + 1)):
@@ -55,19 +78,19 @@ def find_code(text):
 
 def read_photo(path):
     texts = []
-    img = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
-    sharp = ImageEnhance.Sharpness(ImageOps.autocontrast(img)).enhance(1.6)
-    for ang in (0, 90):
+    img = ImageOps.exif_transpose(Image.open(path)).convert("L")
+    sharp = ImageEnhance.Sharpness(ImageOps.autocontrast(img)).enhance(1.8).convert("RGB")
+    for ang in (0, 90, 270, 180):
         rot = sharp.rotate(ang, expand=True) if ang else sharp
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as t:
             tmp = t.name
         try:
-            rot.save(tmp, "JPEG", quality=88)
+            rot.save(tmp, "JPEG", quality=85)
             out = run_ocr(tmp)
             if out:
                 texts.append(out)
                 hit = find_code("\n".join(texts))
-                if hit in PRODUCTS:
+                if hit and lookup_product(hit):
                     return hit, "\n".join(texts).strip()
         except Exception:
             pass
@@ -78,11 +101,14 @@ def read_photo(path):
     return find_code(all_t), all_t
 
 HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Akilli Kampus Atik</title><script src="https://cdn.tailwindcss.com"></script></head>
+<title>Akilli Kampus Atik</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
 <body class="bg-slate-900 text-white min-h-screen font-sans"><div class="max-w-md mx-auto p-4">
 <div class="flex justify-between items-center bg-slate-800/90 border border-slate-700 rounded-xl px-3 py-2 mb-3 text-xs">
 <span id="conn" class="font-bold text-emerald-400">Sunucu Hazir</span>
-<span class="text-slate-400">Surum 2.5</span></div>
+<span class="text-slate-400">Surum 2.6</span></div>
 
 <div class="bg-slate-800 rounded-2xl p-4 mb-4 border border-slate-700">
 <div class="flex justify-between items-center mb-3"><span class="text-xs font-bold text-emerald-400">KAMPUS DONGUSEL ATIK</span>
@@ -95,10 +121,11 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 
 <div id="s1" class="bg-slate-800 rounded-2xl p-5 border border-slate-700">
 <h2 class="text-lg font-bold mb-1">1. Adim: Barkod Numarasini Okut</h2>
-<p class="text-sm text-slate-400 mb-4">Barkodun altindaki rakamlarin fotografini cekin veya numarasini yazin.</p>
+<p class="text-sm text-slate-400 mb-4">Barkodun fotografini cekin veya numarasini yazin.</p>
 <div id="st" class="hidden text-center text-xs font-bold text-amber-200 bg-amber-500/20 border border-amber-500/40 rounded-xl p-3 mb-3"></div>
+<div id="qr-file-tmp" class="hidden"></div>
 <label class="block w-full bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold py-3.5 rounded-xl text-sm text-center cursor-pointer mb-3">
-<span id="pbtn">Fotograf Cek (Rakamları Oku)</span>
+<span id="pbtn">Fotograf Cek (Barkodu Oku)</span>
 <input type="file" accept="image/*" capture="environment" class="hidden" onchange="sendPhoto(this)">
 </label>
 <div class="flex gap-2 mb-3"><input id="man" inputmode="numeric" placeholder="Barkod no yaz (8690525060478)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm">
@@ -152,11 +179,11 @@ function shrink(f){
     rd.onload=e=>{
       const im=new Image();
       im.onload=()=>{
-        const s=Math.min(1,750/Math.max(im.width,im.height));
+        const s=Math.min(1,560/Math.max(im.width,im.height));
         const c=document.createElement('canvas');
         c.width=im.width*s;c.height=im.height*s;
         c.getContext('2d').drawImage(im,0,0,c.width,c.height);
-        c.toBlob(b=>r(b),'image/jpeg',0.85);
+        c.toBlob(b=>r(b),'image/jpeg',0.82);
       };
       im.src=e.target.result;
     };
@@ -164,26 +191,51 @@ function shrink(f){
   });
 }
 
+async function decodeLocalFile(file){
+  try{
+    if(typeof Html5Qrcode==='undefined')return null;
+    const h=new Html5Qrcode("qr-file-tmp",false);
+    const res=await h.scanFile(file,false);
+    try{h.clear();}catch(e){}
+    return res;
+  }catch(e){
+    return null;
+  }
+}
+
 async function sendPhoto(inp){
   if(!inp.files||!inp.files.length)return;
+  const file=inp.files[0];
   const b=document.getElementById('pbtn');
-  b.innerText='Rakamlar okunuyor...';
-  msg('Fotograf taraniyor...');
+  b.innerText='Okunuyor...';
+  msg('Barkod okunuyor...');
+
+  const fastCode=await decodeLocalFile(file);
+  if(fastCode){
+    b.innerText='Fotograf Cek (Barkodu Oku)';
+    inp.value='';
+    await pick(fastCode);
+    return;
+  }
+
   try{
     const fd=new FormData();
-    fd.append('photo',await shrink(inp.files[0]),'p.jpg');
+    fd.append('photo',await shrink(file),'p.jpg');
     const r=await fetch('/api/scan_photo',{method:'POST',body:fd});
     if(!r.ok){
       msg('Aradiginiz urun veri tabanimizda kayitli degil.');
     }else{
       const d=await r.json();
-      if(d.code){await pick(d.code);}
-      else{msg('Aradiginiz urun veri tabanimizda kayitli degil.');}
+      if(d.code){
+        await pick(d.code);
+      }else{
+        msg('Aradiginiz urun veri tabanimizda kayitli degil.');
+      }
     }
   }catch(e){
     msg('Aradiginiz urun veri tabanimizda kayitli degil.');
   }
-  b.innerText='Fotograf Cek (Rakamları Oku)';
+  b.innerText='Fotograf Cek (Barkodu Oku)';
   inp.value='';
 }
 
@@ -193,7 +245,7 @@ async function pick(c){
   try{
     const res=await fetch('/api/product/'+encodeURIComponent(c),{cache:'no-store'});
     if(res.status===404){
-      msg('Aradiginiz urun veri tabanimizda kayitli degil.');
+      msg('Aradiginiz urun veri tabanimizda kayitli degil. (Okunan: '+c+')');
       return;
     }
     const data=await res.json();
@@ -280,7 +332,7 @@ def scan_photo():
 
 @app.route("/api/product/<code>")
 def get_product(code):
-    item = PRODUCTS.get(code.strip())
+    item = lookup_product(code)
     if not item:
         return jsonify({"error": "not_found"}), 404
     return jsonify(item)
