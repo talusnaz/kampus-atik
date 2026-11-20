@@ -1,20 +1,26 @@
-import os, sys, re, json, tempfile, subprocess
+import os, sys, re, tempfile, subprocess
 from flask import Flask, request, jsonify, render_template_string
 from PIL import Image, ImageOps
 
 app = Flask(__name__)
-DB_FILE = "products.json"
+
 PRODUCTS = {
     "8681413502057": {"name": "Mila Su 0.5L", "bin": "SARI", "type": "Plastik (PET)", "tip": "Kapagi ayirip siseyi ezerek atin.", "grams": 18, "co2": 45},
     "8681630429533": {"name": "Züber Ice Tea", "bin": "SARI", "type": "Metal / Aluminyum", "tip": "Icinde gida artigi birakmadan atin.", "grams": 12, "co2": 97},
-    "8690525060478": {"name": "Pınar su", "bin": "SARI", "type": "Plastik (PET)", "tip": "Siviyi bosaltip kutuyu sikistirin.", "grams": 14, "co2": 110},
+    "8690525060478": {"name": "Pınar Su", "bin": "SARI", "type": "Plastik (PET)", "tip": "Siviyi bosaltip siseyi sikistirin.", "grams": 14, "co2": 110},
     "8690624101011": {"name": "Meyve Suyu Karton 200ml", "bin": "MAVI", "type": "Kagit / Kompozit", "tip": "Pipeti cikarip Mavi kutuya atin.", "grams": 12, "co2": 22},
 }
-if os.path.exists(DB_FILE):
-    try: PRODUCTS.update(json.load(open(DB_FILE, encoding="utf-8")))
-    except Exception: pass
 
-state = {"sensor_active": False, "expected_bin": None, "last_product": None, "last_result": None, "points": 0, "total_grams": 0, "total_co2": 0, "contaminated_prevented": 0}
+state = {
+    "sensor_active": False,
+    "expected_bin": None,
+    "last_product": None,
+    "last_result": None,
+    "points": 0,
+    "total_grams": 0,
+    "total_co2": 0,
+    "contaminated_prevented": 0
+}
 rapid_engine = None
 
 def run_ocr(img_path):
@@ -76,7 +82,7 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 <body class="bg-slate-900 text-white min-h-screen font-sans"><div class="max-w-md mx-auto p-4">
 <div class="flex justify-between items-center bg-slate-800/90 border border-slate-700 rounded-xl px-3 py-2 mb-3 text-xs">
 <span id="conn" class="font-bold text-amber-400">Baglanti kontrol ediliyor...</span>
-<span class="text-slate-400">Surum 2.0</span></div>
+<span class="text-slate-400">Surum 2.1</span></div>
 <div class="bg-slate-800 rounded-2xl p-4 mb-4 border border-slate-700">
 <div class="flex justify-between items-center mb-3"><span class="text-xs font-bold text-emerald-400">KAMPUS DONGUSEL ATIK</span>
 <span class="bg-emerald-500/20 text-emerald-300 text-xs px-2.5 py-1 rounded-full font-semibold" id="pts">0 Yesil Puan</span></div>
@@ -87,7 +93,7 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 </div></div>
 <div id="s1" class="bg-slate-800 rounded-2xl p-5 border border-slate-700">
 <h2 class="text-lg font-bold mb-1">1. Adim: Barkod Numarasini Okut</h2>
-<p class="text-sm text-slate-400 mb-4">Barkodun altindaki rakamlarin fotografini cekin.</p>
+<p class="text-sm text-slate-400 mb-4">Barkodun altindaki rakamlarin fotografini cekin veya numarasini yazin.</p>
 <div id="st" class="hidden text-center text-xs font-bold text-amber-200 bg-amber-500/20 border border-amber-500/40 rounded-xl p-3 mb-3"></div>
 <label class="block w-full bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold py-3.5 rounded-xl text-sm text-center cursor-pointer mb-3">
 <span id="pbtn">Fotograf Cek (Rakamları Oku)</span>
@@ -95,11 +101,6 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 </label>
 <div class="flex gap-2 mb-3"><input id="man" inputmode="numeric" placeholder="Barkod no yaz (8681413502057)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm">
 <button onclick="pick(document.getElementById('man').value)" class="bg-slate-700 font-bold px-4 py-2 rounded-xl text-sm">Sorgula</button></div>
-<details class="bg-slate-900 border border-slate-700 rounded-xl p-3 mb-3"><summary class="text-xs font-bold text-emerald-400 cursor-pointer">+ Yeni Urun Barkodu Tanimla</summary>
-<div class="mt-2 space-y-2"><input id="nc" inputmode="numeric" placeholder="Barkod No" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs">
-<input id="nn" placeholder="Urun Adi" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs">
-<select id="nb" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs"><option value="SARI">SARI KUTU</option><option value="MAVI">MAVI KUTU</option></select>
-<button onclick="addP()" class="w-full bg-emerald-600 text-xs font-bold py-2 rounded-lg">Kaydet</button></div></details>
 <div class="border-t border-slate-700 pt-3 grid grid-cols-2 gap-2">
 <button onclick="pick('8681413502057')" class="bg-slate-700 text-xs py-2 rounded-lg">Mila Su (Sari)</button>
 <button onclick="pick('8690624101011')" class="bg-slate-700 text-xs py-2 rounded-lg">Karton Kutu (Mavi)</button></div></div>
@@ -119,65 +120,54 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 let cur=null,tmr=null;
 const go=n=>{[1,2,3,4].forEach(i=>document.getElementById('s'+i).classList.add('hidden'));document.getElementById('s'+n).classList.remove('hidden')};
 const msg=t=>{const e=document.getElementById('st');e.innerText=t;e.classList.toggle('hidden',!t)};
-async function ping(){try{const r=await fetch('/api/status');if(r.ok){document.getElementById('conn').innerText='Sunucu Bagli';document.getElementById('conn').className='font-bold text-emerald-400';return}}catch(e){}document.getElementById('conn').innerText='Baglanti Koptu! Terminal linkini yenile';document.getElementById('conn').className='font-bold text-rose-400'}
+async function ping(){try{const r=await fetch('/api/status');if(r.ok){document.getElementById('conn').innerText='Sunucu Bagli';document.getElementById('conn').className='font-bold text-emerald-400';return}}catch(e){}document.getElementById('conn').innerText='Baglanti Koptu!';document.getElementById('conn').className='font-bold text-rose-400'}
 ping();setInterval(ping,5000);
 function shrink(f){return new Promise(r=>{const rd=new FileReader();rd.onload=e=>{const im=new Image();im.onload=()=>{const s=Math.min(1,1000/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);c.toBlob(b=>r(b),'image/jpeg',0.88)};im.src=e.target.result};rd.readAsDataURL(f)})}
-async function sendPhoto(inp){if(!inp.files||!inp.files.length)return;const b=document.getElementById('pbtn');b.innerText='Sunucuda okunuyor...';msg('Foto sunucuya gonderildi, rakamlar taraniyor...');try{const fd=new FormData();fd.append('photo',await shrink(inp.files[0]),'p.jpg');const d=await(await fetch('/api/scan_photo',{method:'POST',body:fd})).json();if(d.code){msg('Tanindi: '+d.code);await pick(d.code)}else{msg('Rakam secilemedi (Gorulen: '+(d.raw||'bos')+'). Yakindan tekrar cekin.')}}catch(e){msg('Sunucu baglantisi koptu! Terminaldeki yeni linki acin.')}b.innerText='Fotograf Cek (Rakamları Oku)';inp.value=''}
-async function addP(){try{const code=document.getElementById('nc').value.trim(),name=document.getElementById('nn').value.trim(),bin=document.getElementById('nb').value;if(!code||!name)return;await fetch('/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,name,bin})});alert('Kaydedildi: '+name)}catch(e){alert('Baglanti koptu')}}
-async function pick(c){c=(c||'').trim();if(!c)return;try{cur=await(await fetch('/api/product/'+encodeURIComponent(c))).json();document.getElementById('pn').innerText=cur.name+' ['+c+']';document.getElementById('tb').innerText=cur.bin+' KUTUYA ATIN';document.getElementById('pt').innerText=cur.tip;document.getElementById('ban').className='p-4 rounded-xl mb-4 text-center font-bold '+(cur.bin==='SARI'?'bg-amber-500 text-slate-950':'bg-sky-500 text-slate-950');go(2)}catch(e){msg('Sunucu baglantisi koptu! Terminaldeki yeni linki acin.')}}
+async function sendPhoto(inp){if(!inp.files||!inp.files.length)return;const b=document.getElementById('pbtn');b.innerText='Sunucuda okunuyor...';msg('Foto sunucuya gonderildi, rakamlar taraniyor...');try{const fd=new FormData();fd.append('photo',await shrink(inp.files[0]),'p.jpg');const d=await(await fetch('/api/scan_photo',{method:'POST',body:fd})).json();if(d.code){msg('Tanindi: '+d.code);await pick(d.code)}else{msg('Rakam secilemedi (Gorulen: '+(d.raw||'bos')+'). Yakindan tekrar cekin.')}}catch(e){msg('Sunucu baglantisi koptu!')}b.innerText='Fotograf Cek (Rakamları Oku)';inp.value=''}
+async function pick(c){c=(c||'').trim();if(!c)return;try{const res=await fetch('/api/product/'+encodeURIComponent(c));const data=await res.json();if(!res.ok||data.error){msg('Uyari: ['+c+'] barkodu sistemde kayitli degil! Lutfen kayitli bir urun okutun.');return}msg('');cur=data;document.getElementById('pn').innerText=cur.name+' ['+c+']';document.getElementById('tb').innerText=cur.bin+' KUTUYA ATIN';document.getElementById('pt').innerText=cur.tip;document.getElementById('ban').className='p-4 rounded-xl mb-4 text-center font-bold '+(cur.bin==='SARI'?'bg-amber-500 text-slate-950':'bg-sky-500 text-slate-950');go(2)}catch(e){msg('Sunucu baglantisi koptu!')}}
 async function arm(id){try{await fetch('/api/activate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bin_id:id,product:cur})});document.getElementById('wb').innerText=cur.bin;go(3);if(tmr)clearInterval(tmr);tmr=setInterval(async()=>{const d=await(await fetch('/api/status')).json();document.getElementById('pts').innerText=d.points+' Yesil Puan';document.getElementById('g').innerText=d.total_grams+' g';document.getElementById('co2').innerText=d.total_co2+' g';document.getElementById('cnt').innerText=d.contaminated_prevented;if(!d.sensor_active&&d.last_result){clearInterval(tmr);const ok=d.last_result==='SUCCESS';document.getElementById('rt').innerText=ok?'Dogru Ayristirma! +10 Puan':'Yanlis Kutuya Atildi!';document.getElementById('rt').className='text-xl font-bold mb-2 '+(ok?'text-emerald-400':'text-rose-400');document.getElementById('rd').innerText=ok?cur.grams+'g atik kurtarildi, '+cur.co2+'g CO2 onlendi.':'Kontaminasyon olustu, puan yuklenmedi.';go(4)}},1000)}catch(e){alert('Baglanti koptu')}}
 const drop=b=>fetch('/api/sensor_trigger?bin='+b);
 </script></body></html>"""
 
+def record_drop(bin_name):
+    if not state["sensor_active"]:
+        return False
+    p = state["last_product"]
+    if bin_name == state["expected_bin"]:
+        state["points"] += 10
+        state["total_grams"] += p["grams"]
+        state["total_co2"] += p["co2"]
+        state["contaminated_prevented"] += 1
+        state["last_result"] = "SUCCESS"
+    else:
+        state["last_result"] = "WRONG_BIN"
+    state["sensor_active"] = False
+    return True
+
 @app.route("/")
-def index(): return render_template_string(HTML)
+def index():
+    return render_template_string(HTML)
 
 @app.route("/api/scan_photo", methods=["POST"])
 def scan_photo():
     f = request.files.get("photo")
-    if not f: return jsonify({"code": None, "raw": "bos"})
-    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as t: p = t.name
+    if not f:
+        return jsonify({"code": None, "raw": "bos"})
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as t:
+        p = t.name
     try:
         f.save(p)
         c, raw = read_photo(p)
         return jsonify({"code": c, "raw": raw[:60]})
     finally:
-        if os.path.exists(p): os.remove(p)
+        if os.path.exists(p):
+            os.remove(p)
 
 @app.route("/api/product/<code>")
 def get_product(code):
-    return jsonify(PRODUCTS.get(code.strip(), {"name": f"Tanimsiz ({code})", "bin": "SARI", "type": "Ambalaj", "tip": "Sari kutuya atin.", "grams": 10, "co2": 25}))
+    item = PRODUCTS.get(code.strip())
+    if not item:
+        return jsonify({"error": "not_found"}), 404
+    return jsonify(item)
 
-@app.route("/api/products", methods=["POST"])
-def add_product():
-    d = request.json
-    c, b = d["code"].strip(), d["bin"].upper()
-    PRODUCTS[c] = {"name": d["name"].strip(), "bin": b, "type": b, "tip": f"{b} kutuya atin.", "grams": 15, "co2": 35}
-    json.dump(PRODUCTS, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-    return jsonify({"ok": True})
-
-@app.route("/api/activate", methods=["POST"])
-def activate():
-    d = request.json
-    state.update({"sensor_active": True, "expected_bin": d["product"]["bin"], "last_product": d["product"], "last_result": None})
-    return jsonify({"status": "armed"})
-
-@app.route("/api/esp32/check")
-def esp32_check(): return jsonify({"active": state["sensor_active"], "expected_bin": state["expected_bin"]})
-
-@app.route("/api/sensor_trigger")
-def sensor_trigger():
-    b = request.args.get("bin", "").upper()
-    if not state["sensor_active"]: return jsonify({"status": "ignored"})
-    p = state["last_product"]
-    if b == state["expected_bin"]:
-        state["points"] += 10; state["total_grams"] += p["grams"]; state["total_co2"] += p["co2"]; state["contaminated_prevented"] += 1; state["last_result"] = "SUCCESS"
-    else: state["last_result"] = "WRONG_BIN"
-    state["sensor_active"] = False
-    return jsonify({"status": "recorded"})
-
-@app.route("/api/status")
-def status(): return jsonify(state)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5001)), debug=False)
+@
