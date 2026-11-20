@@ -94,4 +94,31 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 <div id="s1" class="bg-slate-800 rounded-2xl p-5 border border-slate-700">
 <h2 class="text-lg font-bold mb-1">1. Adim: Barkod Numarasini Okut</h2>
 <p class="text-sm text-slate-400 mb-4">Barkodun altindaki rakamlarin fotografini cekin veya numarasini yazin.</p>
-<div id="st" class="hidden text-center text-xs font-bold text-amber-200 bg-amber-500/20 border border-amber-500/4
+<div id="st" class="hidden text-center text-xs font-bold text-amber-200 bg-amber-500/20 border border-amber-500/40 rounded-xl p-3 mb-3"></div>
+<label class="block w-full bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold py-3.5 rounded-xl text-sm text-center cursor-pointer mb-3">
+<span id="pbtn">Fotograf Cek (Rakamları Oku)</span>
+<input type="file" accept="image/*" capture="environment" class="hidden" onchange="sendPhoto(this)">
+</label>
+<div class="flex gap-2 mb-3"><input id="man" inputmode="numeric" placeholder="Barkod no yaz (8681413502057)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm">
+<button onclick="pick(document.getElementById('man').value)" class="bg-slate-700 font-bold px-4 py-2 rounded-xl text-sm">Sorgula</button></div>
+<div class="border-t border-slate-700 pt-3 grid grid-cols-3 gap-2">
+<button onclick="pick('8681413502057')" class="bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs py-2 rounded-lg font-semibold">Pet (Sari)</button>
+<button onclick="pick('8681630429533')" class="bg-sky-500/20 border border-sky-500/40 text-sky-300 text-xs py-2 rounded-lg font-semibold">Metal (Mavi)</button>
+<button onclick="pick('8690624101011')" class="bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs py-2 rounded-lg font-semibold">Kagit (Kirmizi)</button></div></div>
+<div id="s2" class="hidden bg-slate-800 rounded-2xl p-5 border border-slate-700">
+<div id="ban" class="p-4 rounded-xl mb-4 text-center font-bold"><div class="text-xs uppercase opacity-80" id="pn"></div><div class="text-2xl my-1" id="tb"></div><div class="text-xs font-normal" id="pt"></div></div>
+<h2 class="text-base font-bold mb-2">2. Adim: Kutudaki QR Kodu Okut</h2>
+<button onclick="arm('KUTU_01')" class="w-full bg-sky-600 font-bold py-3 rounded-xl">Kutu QR Okutuldu / Sensoru Baslat</button></div>
+<div id="s3" class="hidden bg-slate-800 rounded-2xl p-5 border border-emerald-500/50 text-center">
+<h2 class="text-lg font-bold text-emerald-400 mb-2">Kutu Sensoru Aktif!</h2>
+<p class="text-sm text-slate-300 mb-4">Atigi <strong id="wb"></strong> bolmeye birakin.</p>
+<div class="grid grid-cols-2 gap-2"><button onclick="drop(cur.bin)" class="bg-emerald-600 text-xs font-bold py-2.5 rounded-lg">Dogru Kutuya Atildi</button>
+<button onclick="drop('YANLIS')" class="bg-rose-600 text-xs font-bold py-2.5 rounded-lg">Yanlis Kutuya Atildi</button></div></div>
+<div id="s4" class="hidden bg-slate-800 rounded-2xl p-6 border border-slate-700 text-center">
+<h2 id="rt" class="text-xl font-bold mb-2"></h2><p id="rd" class="text-sm text-slate-300 mb-5"></p>
+<button onclick="go(1)" class="w-full bg-emerald-600 font-bold py-3 rounded-xl">Yeni Atik Okut</button></div></div>
+<script>
+let cur=null,tmr=null;
+const go=n=>{[1,2,3,4].forEach(i=>document.getElementById('s'+i).classList.add('hidden'));document.getElementById('s'+n).classList.remove('hidden')};
+const msg=t=>{const e=document.getElementById('st');e.innerText=t;e.classList.toggle('hidden',!t)};
+async function ping(){try{const r=await fetch('/api/status');if(r.ok){document.getElementById('conn').innerText='Sunucu Bagli';document.getElementById('conn').className='font-
