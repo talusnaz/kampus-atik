@@ -170,4 +170,41 @@ def get_product(code):
         return jsonify({"error": "not_found"}), 404
     return jsonify(item)
 
-@
+@app.route("/api/activate", methods=["POST"])
+def activate():
+    d = request.json
+    state.update({
+        "sensor_active": True,
+        "expected_bin": d["product"]["bin"],
+        "last_product": d["product"],
+        "last_result": None
+    })
+    return jsonify({"status": "armed"})
+
+@app.route("/api/esp32/check", methods=["GET", "POST"])
+def esp32_check():
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        sid = int(data.get("sensor_id", 0))
+        bin_map = {1: "SARI", 2: "MAVI", 3: "DIGER"}
+        detected_bin = bin_map.get(sid)
+        if not detected_bin:
+            return jsonify({"status": "invalid_sensor"}), 400
+        if record_drop(detected_bin):
+            return jsonify({"status": "recorded", "bin": detected_bin, "result": state["last_result"]}), 200
+        return jsonify({"status": "inactive_session"}), 400
+    return jsonify({"active": state["sensor_active"], "expected_bin": state["expected_bin"]})
+
+@app.route("/api/sensor_trigger")
+def sensor_trigger():
+    b = request.args.get("bin", "").upper()
+    if record_drop(b):
+        return jsonify({"status": "recorded"})
+    return jsonify({"status": "ignored"})
+
+@app.route("/api/status")
+def status():
+    return jsonify(state)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5001)), debug=False)
