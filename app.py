@@ -45,7 +45,7 @@ def find_code(text):
     for c in PRODUCTS:
         n = len(c)
         for i in range(max(0, len(digits) - n + 1)):
-            if sum(a == b for a, b in zip(c, digits[i:i+n])) >= n - 3:
+            if sum(a == b for a, b in zip(c, digits[i:i+n])) >= n - 2:
                 return c
     for m in re.findall(r"(?:\d\s*){8,13}", text):
         clean = re.sub(r"\D", "", m)
@@ -57,12 +57,12 @@ def read_photo(path):
     texts = []
     img = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
     gray = ImageOps.autocontrast(ImageOps.grayscale(img)).convert("RGB")
-    for im, ang in [(img, 0), (img, 90), (img, 270), (img, 180), (gray, 0), (gray, 90)]:
+    for im, ang in [(img, 0), (img, 90), (img, 270), (gray, 0)]:
         rot = im.rotate(ang, expand=True) if ang else im
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as t:
             tmp = t.name
         try:
-            rot.save(tmp, "JPEG", quality=92)
+            rot.save(tmp, "JPEG", quality=88)
             out = run_ocr(tmp)
             if out:
                 texts.append(out)
@@ -81,8 +81,8 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 <title>Akilli Kampus Atik</title><script src="https://cdn.tailwindcss.com"></script></head>
 <body class="bg-slate-900 text-white min-h-screen font-sans"><div class="max-w-md mx-auto p-4">
 <div class="flex justify-between items-center bg-slate-800/90 border border-slate-700 rounded-xl px-3 py-2 mb-3 text-xs">
-<span id="conn" class="font-bold text-amber-400">Baglanti kontrol ediliyor...</span>
-<span class="text-slate-400">Surum 2.2</span></div>
+<span id="conn" class="font-bold text-emerald-400">Sunucu Hazir</span>
+<span class="text-slate-400">Surum 2.3</span></div>
 <div class="bg-slate-800 rounded-2xl p-4 mb-4 border border-slate-700">
 <div class="flex justify-between items-center mb-3"><span class="text-xs font-bold text-emerald-400">KAMPUS DONGUSEL ATIK</span>
 <span class="bg-emerald-500/20 text-emerald-300 text-xs px-2.5 py-1 rounded-full font-semibold" id="pts">0 Yesil Puan</span></div>
@@ -118,15 +118,101 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 <h2 id="rt" class="text-xl font-bold mb-2"></h2><p id="rd" class="text-sm text-slate-300 mb-5"></p>
 <button onclick="go(1)" class="w-full bg-emerald-600 font-bold py-3 rounded-xl">Yeni Atik Okut</button></div></div>
 <script>
-let cur=null,tmr=null;
+let cur=null,tmr=null,failCount=0;
 const go=n=>{[1,2,3,4].forEach(i=>document.getElementById('s'+i).classList.add('hidden'));document.getElementById('s'+n).classList.remove('hidden')};
 const msg=t=>{const e=document.getElementById('st');e.innerText=t;e.classList.toggle('hidden',!t)};
-async function ping(){try{const r=await fetch('/api/status');if(r.ok){document.getElementById('conn').innerText='Sunucu Bagli';document.getElementById('conn').className='font-bold text-emerald-400';return}}catch(e){}document.getElementById('conn').innerText='Baglanti Koptu!';document.getElementById('conn').className='font-bold text-rose-400'}
-ping();setInterval(ping,5000);
-function shrink(f){return new Promise(r=>{const rd=new FileReader();rd.onload=e=>{const im=new Image();im.onload=()=>{const s=Math.min(1,1000/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);c.toBlob(b=>r(b),'image/jpeg',0.88)};im.src=e.target.result};rd.readAsDataURL(f)})}
-async function sendPhoto(inp){if(!inp.files||!inp.files.length)return;const b=document.getElementById('pbtn');b.innerText='Sunucuda okunuyor...';msg('Foto sunucuya gonderildi, rakamlar taraniyor...');try{const fd=new FormData();fd.append('photo',await shrink(inp.files[0]),'p.jpg');const d=await(await fetch('/api/scan_photo',{method:'POST',body:fd})).json();if(d.code){msg('Tanindi: '+d.code);await pick(d.code)}else{msg('Rakam secilemedi (Gorulen: '+(d.raw||'bos')+'). Yakindan tekrar cekin.')}}catch(e){msg('Sunucu baglantisi koptu!')}b.innerText='Fotograf Cek (Rakamları Oku)';inp.value=''}
-async function pick(c){c=(c||'').trim();if(!c)return;try{const res=await fetch('/api/product/'+encodeURIComponent(c));const data=await res.json();if(!res.ok||data.error){msg('Uyari: ['+c+'] barkodu sistemde kayitli degil! Lutfen kayitli bir urun okutun.');return}msg('');cur=data;document.getElementById('pn').innerText=cur.name+' ['+c+']';document.getElementById('tb').innerText=cur.bin+' KUTUYA ATIN';document.getElementById('pt').innerText=cur.tip;const colors={'SARI':'bg-amber-500 text-slate-950','MAVI':'bg-sky-500 text-slate-950','KIRMIZI':'bg-rose-600 text-white'};document.getElementById('ban').className='p-4 rounded-xl mb-4 text-center font-bold '+(colors[cur.bin]||'bg-slate-700 text-white');go(2)}catch(e){msg('Sunucu baglantisi koptu!')}}
-async function arm(id){try{await fetch('/api/activate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bin_id:id,product:cur})});document.getElementById('wb').innerText=cur.bin;go(3);if(tmr)clearInterval(tmr);tmr=setInterval(async()=>{const d=await(await fetch('/api/status')).json();document.getElementById('pts').innerText=d.points+' Yesil Puan';document.getElementById('g').innerText=d.total_grams+' g';document.getElementById('co2').innerText=d.total_co2+' g';document.getElementById('cnt').innerText=d.contaminated_prevented;if(!d.sensor_active&&d.last_result){clearInterval(tmr);const ok=d.last_result==='SUCCESS';document.getElementById('rt').innerText=ok?'Dogru Ayristirma! +10 Puan':'Yanlis Kutuya Atildi!';document.getElementById('rt').className='text-xl font-bold mb-2 '+(ok?'text-emerald-400':'text-rose-400');document.getElementById('rd').innerText=ok?cur.grams+'g atik kurtarildi, '+cur.co2+'g CO2 onlendi.':'Kontaminasyon olustu, puan yuklenmedi.';go(4)}},1000)}catch(e){alert('Baglanti koptu')}}
+async function ping(){
+  try{
+    const r=await fetch('/api/status',{cache:'no-store'});
+    if(r.ok){
+      failCount=0;
+      document.getElementById('conn').innerText='Sunucu Bagli';
+      document.getElementById('conn').className='font-bold text-emerald-400';
+      return;
+    }
+  }catch(e){}
+  failCount++;
+  if(failCount>=3){
+    document.getElementById('conn').innerText='Sunucu Uyaniyor...';
+    document.getElementById('conn').className='font-bold text-amber-400';
+  }
+}
+ping();setInterval(ping,10000);
+function shrink(f){return new Promise(r=>{const rd=new FileReader();rd.onload=e=>{const im=new Image();im.onload=()=>{const s=Math.min(1,900/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);c.toBlob(b=>r(b),'image/jpeg',0.85)};im.src=e.target.result};rd.readAsDataURL(f)})}
+async function sendPhoto(inp){
+  if(!inp.files||!inp.files.length)return;
+  const b=document.getElementById('pbtn');
+  b.innerText='Sunucuda okunuyor...';
+  msg('Fotograf taraniyor, lutfen bekleyin...');
+  try{
+    const fd=new FormData();
+    fd.append('photo',await shrink(inp.files[0]),'p.jpg');
+    const r=await fetch('/api/scan_photo',{method:'POST',body:fd});
+    if(!r.ok){msg('Aradiginiz urun veri tabanimizda kayitli degil.');}
+    else{
+      const d=await r.json();
+      if(d.code){await pick(d.code);}
+      else{msg('Aradiginiz urun veri tabanimizda kayitli degil.');}
+    }
+  }catch(e){
+    msg('Aradiginiz urun veri tabanimizda kayitli degil.');
+  }
+  b.innerText='Fotograf Cek (Rakamları Oku)';
+  inp.value='';
+}
+async function pick(c){
+  c=(c||'').trim();
+  if(!c)return;
+  try{
+    const res=await fetch('/api/product/'+encodeURIComponent(c),{cache:'no-store'});
+    if(res.status===404){
+      msg('Aradiginiz urun veri tabanimizda kayitli degil.');
+      return;
+    }
+    const data=await res.json();
+    if(!res.ok||data.error){
+      msg('Aradiginiz urun veri tabanimizda kayitli degil.');
+      return;
+    }
+    msg('');
+    cur=data;
+    document.getElementById('pn').innerText=cur.name+' ['+c+']';
+    document.getElementById('tb').innerText=cur.bin+' KUTUYA ATIN';
+    document.getElementById('pt').innerText=cur.tip;
+    const colors={'SARI':'bg-amber-500 text-slate-950','MAVI':'bg-sky-500 text-slate-950','KIRMIZI':'bg-rose-600 text-white'};
+    document.getElementById('ban').className='p-4 rounded-xl mb-4 text-center font-bold '+(colors[cur.bin]||'bg-slate-700 text-white');
+    go(2);
+  }catch(e){
+    msg('Aradiginiz urun veri tabanimizda kayitli degil.');
+  }
+}
+async function arm(id){
+  try{
+    await fetch('/api/activate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bin_id:id,product:cur})});
+    document.getElementById('wb').innerText=cur.bin;
+    go(3);
+    if(tmr)clearInterval(tmr);
+    tmr=setInterval(async()=>{
+      try{
+        const d=await(await fetch('/api/status',{cache:'no-store'})).json();
+        document.getElementById('pts').innerText=d.points+' Yesil Puan';
+        document.getElementById('g').innerText=d.total_grams+' g';
+        document.getElementById('co2').innerText=d.total_co2+' g';
+        document.getElementById('cnt').innerText=d.contaminated_prevented;
+        if(!d.sensor_active&&d.last_result){
+          clearInterval(tmr);
+          const ok=d.last_result==='SUCCESS';
+          document.getElementById('rt').innerText=ok?'Dogru Ayristirma! +10 Puan':'Yanlis Kutuya Atildi!';
+          document.getElementById('rt').className='text-xl font-bold mb-2 '+(ok?'text-emerald-400':'text-rose-400');
+          document.getElementById('rd').innerText=ok?cur.grams+'g atik kurtarildi, '+cur.co2+'g CO2 onlendi.':'Kontaminasyon olustu, puan yuklenmedi.';
+          go(4);
+        }
+      }catch(e){}
+    },1200);
+  }catch(e){
+    msg('Islem baslatilamadi, tekrar deneyin.');
+  }
+}
 const drop=b=>fetch('/api/sensor_trigger?bin='+b);
 </script></body></html>"""
 
