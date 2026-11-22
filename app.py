@@ -81,8 +81,8 @@ URUNLER_DB = {
         "kutu etiketi": "Cam Atık",
         "kutu rengi": "Yeşil",
         "pin": "D7",
-        "ağırlık gram": 200.0,
-        "co2 tasarruf gram": 60.0,
+        "ağırlık gram": 150.0,
+        "co2 tasarruf gram": 45.0,
         "puan": 15
     }
 }
