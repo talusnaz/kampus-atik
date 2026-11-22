@@ -5,6 +5,15 @@ from PIL import Image, ImageOps, ImageEnhance
 app = Flask(__name__)
 
 URUNLER_DB = {
+    "8690525060478": {
+        "ürün adı": "Pınar Doğal Kaynak Suyu (0,5 L)",
+        "kategori": "Plastik",
+        "kutu etiketi": "Plastik Atık",
+        "kutu rengi": "Sarı",
+        "pin": "D6",
+        "ağırlık gram": 20.0,
+        "co2 tasarruf gram": 36.0,
+        "puan": 10
     "8690533714141": {
         "ürün adı": "Eti Crax Peynirli Çubuk Kraker (50 g)",
         "kategori": "Plastik",
