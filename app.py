@@ -4,12 +4,87 @@ from PIL import Image, ImageOps, ImageEnhance
 
 app = Flask(__name__)
 
-PRODUCTS = {
-    "8681413502057": {"name": "Mila Su 0.5L", "bin": "SARI", "type": "Plastik (PET)", "tip": "Kapagi ayirip siseyi ezerek Sari kutuya atin.", "grams": 18, "co2": 45},
-    "8690525060478": {"name": "Pınar Su", "bin": "SARI", "type": "Plastik (PET)", "tip": "Siviyi bosaltip siseyi sikistirarak Sari kutuya atin.", "grams": 14, "co2": 110},
-    "8681630429533": {"name": "Züber Ice Tea", "bin": "MAVI", "type": "Metal / Aluminyum", "tip": "Icinde sivi birakmadan Mavi metal kutusuna atin.", "grams": 12, "co2": 97},
-    "8683757144375": {"name": "Karton kutu", "bin": "KIRMIZI", "type": "Kagit / Karton", "tip": "Kirmizi kagit kutusuna atin.", "grams": 12, "co2": 22},
-    "8690533714141": {"name": "Crax peynirli kraker", "bin": "SARI", "type": "Plastik", "tip": "Paketini sarı kutuya atınız", "grams": 18, "co2": 45},
+URUNLER_DB = {
+    "8690533714141": {
+        "ürün adı": "Eti Crax Peynirli Çubuk Kraker (50 g)",
+        "kategori": "Plastik",
+        "kutu etiketi": "Plastik Atık",
+        "kutu rengi": "Sarı",
+        "pin": "D6",
+        "ağırlık gram": 2.5,
+        "co2 tasarruf gram": 4.5,
+        "puan": 5
+    },
+    "8690526074238": {
+        "ürün adı": "Eti Crax Baharatlı Çubuk Kraker (50 g)",
+        "kategori": "Plastik",
+        "kutu etiketi": "Plastik Atık",
+        "kutu rengi": "Sarı",
+        "pin": "D6",
+        "ağırlık gram": 2.5,
+        "co2 tasarruf gram": 4.5,
+        "puan": 5
+    },
+    "8690504107125": {
+        "ürün adı": "Ülker İkram Sütlü Çikolatalı Bisküvi (99 g)",
+        "kategori": "Plastik",
+        "kutu etiketi": "Plastik Atık",
+        "kutu rengi": "Sarı",
+        "pin": "D6",
+        "ağırlık gram": 3.5,
+        "co2 tasarruf gram": 6.3,
+        "puan": 5
+    },
+    "8690526063508": {
+        "ürün adı": "Eti Burçak Sütlü Çikolatalı Bisküvi (114 g)",
+        "kategori": "Plastik",
+        "kutu etiketi": "Plastik Atık",
+        "kutu rengi": "Sarı",
+        "pin": "D6",
+        "ağırlık gram": 4.0,
+        "co2 tasarruf gram": 7.2,
+        "puan": 5
+    },
+    "8690526083254": {
+        "ürün adı": "Eti Tutku Kakao Kremalı Mozaik Bisküvi (100 g)",
+        "kategori": "Plastik",
+        "kutu etiketi": "Plastik Atık",
+        "kutu rengi": "Sarı",
+        "pin": "D6",
+        "ağırlık gram": 3.5,
+        "co2 tasarruf gram": 6.3,
+        "puan": 5
+    },
+    "8684341638171": {
+        "ürün adı": "Güzelpınar Doğal Kaynak Suyu (0,5 L)",
+        "kategori": "Plastik",
+        "kutu etiketi": "Plastik Atık",
+        "kutu rengi": "Sarı",
+        "pin": "D6",
+        "ağırlık gram": 20.0,
+        "co2 tasarruf gram": 36.0,
+        "puan": 10
+    },
+    "8690632762869": {
+        "ürün adı": "Nescafé Xpress Original (250 ml)",
+        "kategori": "Metal",
+        "kutu etiketi": "Metal Atık",
+        "kutu rengi": "Mavi",
+        "pin": "D5",
+        "ağırlık gram": 15.0,
+        "co2 tasarruf gram": 135.0,
+        "puan": 25
+    },
+    "8693855007489": {
+        "ürün adı": "Freşa Doğal Mineralli Su (200 ml)",
+        "kategori": "Cam",
+        "kutu etiketi": "Cam Atık",
+        "kutu rengi": "Yeşil",
+        "pin": "D7",
+        "ağırlık gram": 200.0,
+        "co2 tasarruf gram": 60.0,
+        "puan": 15
+    }
 }
 
 state = {
