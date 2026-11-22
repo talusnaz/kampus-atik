@@ -1,4 +1,4 @@
-import os, sys, re, tempfile, subprocess
+import os, sys, re, tempfile, subprocess, random
 from flask import Flask, request, jsonify, render_template_string
 from PIL import Image, ImageOps, ImageEnhance
 
@@ -204,11 +204,11 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 <body class="bg-slate-900 text-white min-h-screen font-sans"><div class="max-w-md mx-auto p-4">
 <div class="flex justify-between items-center bg-slate-800/90 border border-slate-700 rounded-xl px-3 py-2 mb-3 text-xs">
 <span id="conn" class="font-bold text-emerald-400">Sunucu Hazır</span>
-<span class="text-slate-400">Sürüm 2.9</span></div>
+<span class="text-slate-400">Sürüm 3.0</span></div>
 
 <div class="bg-slate-800 rounded-2xl p-4 mb-4 border border-slate-700">
 <div class="flex justify-between items-center mb-3"><span class="text-xs font-bold text-emerald-400">KAMPÜS DÖNGÜSEL ATIK</span>
-<span class="bg-emerald-500/20 text-emerald-300 text-xs px-2.5 py-1 rounded-full font-semibold" id="pts">0 Yeşil Puan</span></div>
+<button type="button" onclick="openRewards()" title="Kampanyaları Gör" class="bg-emerald-500/20 hover:bg-emerald-500/30 active:scale-95 border border-emerald-500/40 text-emerald-300 text-xs px-2.5 py-1 rounded-full font-semibold cursor-pointer transition flex items-center gap-1"><span id="pts">0 Yeşil Puan</span><span class="text-[10px] opacity-80">›</span></button></div>
 <div class="grid grid-cols-3 gap-2 text-center">
 <div class="bg-slate-900 p-2 rounded-xl"><div class="text-lg font-bold text-emerald-400" id="g">0 g</div><div class="text-[11px] text-slate-400">Temiz Atık</div></div>
 <div class="bg-slate-900 p-2 rounded-xl"><div class="text-lg font-bold text-sky-400" id="co2">0 g</div><div class="text-[11px] text-slate-400">CO₂ Tasarrufu</div></div>
@@ -246,13 +246,91 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 <h2 id="rt" class="text-xl font-bold mb-2"></h2><p id="rd" class="text-sm text-slate-300 mb-5"></p>
 <button onclick="go(1)" class="w-full bg-emerald-600 font-bold py-3 rounded-xl">Yeni Atık Okut</button></div></div>
 
+<!-- Kampüs Yeşil Puan Kampanyalar Modalı -->
+<div id="rewardsModal" onclick="if(event.target===this)closeRewards()" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+<div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl">
+<div class="flex justify-between items-center p-4 border-b border-slate-700">
+<div>
+<h3 class="text-base font-bold text-emerald-400">Kampüs Yeşil Puan Ödülleri</h3>
+<p class="text-xs text-slate-400">Mevcut Bakiyen: <strong id="modalPts" class="text-white">0 Yeşil Puan</strong></p>
+</div>
+<button onclick="closeRewards()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 w-8 h-8 rounded-full font-bold text-sm">✕</button>
+</div>
+<div id="couponBox" class="hidden mx-4 mt-3 p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-center">
+<div class="text-xs text-emerald-300 font-semibold" id="couponTitle"></div>
+<div class="text-lg font-mono font-extrabold text-white tracking-wider my-1" id="couponCode"></div>
+<div class="text-[11px] text-slate-300">Kantin / işletme kasasında bu kodu gösterin.</div>
+</div>
+<div id="rewardsList" class="p-4 space-y-2.5 overflow-y-auto"></div>
+<div class="px-4 py-2.5 border-t border-slate-700/80 text-[11px] text-slate-400 text-center">
+Not: Listelenen kampanyalar jüri demosu için örnek kurgulanmıştır.
+</div>
+</div>
+</div>
+
 <script>
-let cur=null,tmr=null,failCount=0;
+let cur=null,tmr=null,failCount=0,currentPoints=0;
 const go=n=>{[1,2,3,4].forEach(i=>document.getElementById('s'+i).classList.add('hidden'));document.getElementById('s'+n).classList.remove('hidden')};
 const msg=t=>{const e=document.getElementById('st');e.innerText=t;e.classList.toggle('hidden',!t)};
 
+const DEMO_CAMPAIGNS=[
+  {id:'su_cay',title:'Kampüs Kantininde Ücretsiz Çay veya Su',place:'Ana Kantin & Kafe',cost:50},
+  {id:'cikti',title:'Kırtasiyede %20 Çıktı & Fotokopi İndirimi',place:'Kampüs Kırtasiye',cost:150},
+  {id:'sandvic',title:'1 Sandviç Alana Soğuk İçecek Hediye',place:'Kafeterya',cost:300},
+  {id:'kahve',title:'Okul Kantininde 1 Kahve Alana 1 Kahve Bedava',place:'Kampüs Kahve Noktası',cost:500},
+  {id:'sertifika',title:'Dönem Sonu Yeşil Kampüs Katkı Sertifikası',place:'Sürdürülebilirlik Kulübü',cost:1000}
+];
+
+function renderCampaigns(){
+  document.getElementById('modalPts').innerText=currentPoints+' Yeşil Puan';
+  const box=document.getElementById('rewardsList');
+  box.innerHTML=DEMO_CAMPAIGNS.map(c=>{
+    const canRedeem=currentPoints>=c.cost;
+    const missing=Math.max(0,c.cost-currentPoints);
+    return `<div class="bg-slate-900 border ${canRedeem?'border-emerald-500/40':'border-slate-700'} rounded-xl p-3 flex items-center justify-between gap-3">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-1.5 mb-1">
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300">${c.cost} Puan</span>
+          <span class="text-[10px] text-slate-400 truncate">${c.place}</span>
+        </div>
+        <div class="text-xs font-bold text-slate-100 leading-snug">${c.title}</div>
+      </div>
+      <button onclick="redeemCampaign('${c.id}')" ${canRedeem?'':'disabled'} class="shrink-0 px-3 py-2 rounded-lg text-xs font-bold transition ${canRedeem?'bg-emerald-500 hover:bg-emerald-400 text-slate-950 cursor-pointer':'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'}">
+        ${canRedeem?'Kullan':missing+' Puan Kaldı'}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function openRewards(){
+  document.getElementById('couponBox').classList.add('hidden');
+  renderCampaigns();
+  document.getElementById('rewardsModal').classList.remove('hidden');
+}
+
+function closeRewards(){
+  document.getElementById('rewardsModal').classList.add('hidden');
+}
+
+async function redeemCampaign(id){
+  const item=DEMO_CAMPAIGNS.find(x=>x.id===id);
+  if(!item||currentPoints<item.cost)return;
+  try{
+    const r=await fetch('/api/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cost:item.cost,title:item.title})});
+    const d=await r.json();
+    if(r.ok&&d.status==='ok'){
+      renderStats(d.state);
+      renderCampaigns();
+      document.getElementById('couponTitle').innerText=item.title+' Kuponunuz Hazır:';
+      document.getElementById('couponCode').innerText=d.coupon;
+      document.getElementById('couponBox').classList.remove('hidden');
+    }
+  }catch(e){}
+}
+
 function renderStats(d){
-  document.getElementById('pts').innerText=d.points+' Yeşil Puan';
+  currentPoints=d.points||0;
+  document.getElementById('pts').innerText=currentPoints+' Yeşil Puan';
   document.getElementById('g').innerText=d.total_grams+' g';
   document.getElementById('co2').innerText=d.total_co2+' g';
   document.getElementById('cnt').innerText=d.contaminated_prevented;
@@ -457,6 +535,16 @@ def activate():
         "last_result": None
     })
     return jsonify({"status": "armed"})
+
+@app.route("/api/redeem", methods=["POST"])
+def redeem():
+    d = request.get_json(silent=True) or {}
+    cost = int(d.get("cost", 0))
+    if cost <= 0 or state["points"] < cost:
+        return jsonify({"status": "insufficient_points"}), 400
+    state["points"] -= cost
+    coupon = f"TERA-{random.randint(1000, 9999)}"
+    return jsonify({"status": "ok", "coupon": coupon, "state": state})
 
 @app.route("/api/esp32/check", methods=["GET", "POST"])
 def esp32_check():
