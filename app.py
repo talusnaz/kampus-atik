@@ -69,7 +69,7 @@ URUNLER_DB = {
         "ürün adı": "Nescafé Xpress Original (250 ml)",
         "kategori": "Metal",
         "kutu etiketi": "Metal Atık",
-        "kutu rengi": "Mavi",
+        "kutu rengi": "Gri",
         "pin": "D6",
         "ağırlık gram": 15.0,
         "co2 tasarruf gram": 135.0,
@@ -89,7 +89,7 @@ URUNLER_DB = {
 
 BIN_CODE_MAP = {
     "Sarı": "SARI",
-    "Mavi": "MAVI",
+    "Gri": "MAVI",
     "Yeşil": "YESIL"
 }
 
@@ -228,7 +228,7 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 <button onclick="pick(document.getElementById('man').value)" class="bg-slate-700 font-bold px-4 py-2 rounded-xl text-sm">Sorgula</button></div>
 <div class="border-t border-slate-700 pt-3 grid grid-cols-3 gap-2">
 <button onclick="pick('8684341638171')" class="bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs py-2 rounded-lg font-semibold">Plastik (Sarı)</button>
-<button onclick="pick('8690632762869')" class="bg-sky-500/20 border border-sky-500/40 text-sky-300 text-xs py-2 rounded-lg font-semibold">Metal (Mavi)</button>
+<button onclick="pick('8690632762869')" class="bg-slate-500/20 border border-slate-400/40 text-slate-300 text-xs py-2 rounded-lg font-semibold">Metal (Gri)</button>
 <button onclick="pick('8693855007489')" class="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs py-2 rounded-lg font-semibold">Cam (Yeşil)</button></div></div>
 
 <div id="s2" class="hidden bg-slate-800 rounded-2xl p-5 border border-slate-700">
@@ -366,11 +366,11 @@ async function pick(c){
     }
     msg('');
     cur=data;
-    const binLabels={'SARI':'SARI','MAVI':'MAVİ','YESIL':'YEŞİL'};
+    const binLabels={'SARI':'SARI','MAVI':'GRİ','YESIL':'YEŞİL'};
     document.getElementById('pn').innerText=cur.name+' ['+cur.code+']';
     document.getElementById('tb').innerText=(binLabels[cur.bin]||cur.bin)+' KUTUYA ATIN';
     document.getElementById('pt').innerText=cur.tip;
-    const colors={'SARI':'bg-amber-500 text-slate-950','MAVI':'bg-sky-500 text-slate-950','YESIL':'bg-emerald-500 text-slate-950'};
+    const colors={'SARI':'bg-amber-500 text-slate-950','MAVI':'bg-slate-400 text-slate-950','YESIL':'bg-emerald-500 text-slate-950'};
     document.getElementById('ban').className='p-4 rounded-xl mb-4 text-center font-bold '+(colors[cur.bin]||'bg-slate-700 text-white');
     go(2);
   }catch(e){
@@ -381,7 +381,7 @@ async function pick(c){
 async function arm(id){
   try{
     await fetch('/api/activate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bin_id:id,product:cur})});
-    const binLower={'SARI':'sarı','MAVI':'mavi','YESIL':'yeşil'};
+    const binLower={'SARI':'sarı','MAVI':'gri','YESIL':'yeşil'};
     document.getElementById('wb').innerText=binLower[cur.bin]||cur.bin;
     go(3);
     if(tmr)clearInterval(tmr);
