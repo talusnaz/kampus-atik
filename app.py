@@ -5,22 +5,12 @@ from PIL import Image, ImageOps, ImageEnhance
 app = Flask(__name__)
 
 URUNLER_DB = {
-    "8690525060478": {
-        "ürün adı": "Pınar Doğal Kaynak Suyu (0,5 L)",
-        "kategori": "Plastik",
-        "kutu etiketi": "Plastik Atık",
-        "kutu rengi": "Sarı",
-        "pin": "D6",
-        "ağırlık gram": 20.0,
-        "co2 tasarruf gram": 36.0,
-        "puan": 10
-    },
     "8690533714141": {
         "ürün adı": "Eti Crax Peynirli Çubuk Kraker (50 g)",
         "kategori": "Plastik",
         "kutu etiketi": "Plastik Atık",
         "kutu rengi": "Sarı",
-        "pin": "D6",
+        "pin": "D5",
         "ağırlık gram": 2.5,
         "co2 tasarruf gram": 4.5,
         "puan": 5
@@ -30,7 +20,7 @@ URUNLER_DB = {
         "kategori": "Plastik",
         "kutu etiketi": "Plastik Atık",
         "kutu rengi": "Sarı",
-        "pin": "D6",
+        "pin": "D5",
         "ağırlık gram": 2.5,
         "co2 tasarruf gram": 4.5,
         "puan": 5
@@ -40,7 +30,7 @@ URUNLER_DB = {
         "kategori": "Plastik",
         "kutu etiketi": "Plastik Atık",
         "kutu rengi": "Sarı",
-        "pin": "D6",
+        "pin": "D5",
         "ağırlık gram": 3.5,
         "co2 tasarruf gram": 6.3,
         "puan": 5
@@ -50,7 +40,7 @@ URUNLER_DB = {
         "kategori": "Plastik",
         "kutu etiketi": "Plastik Atık",
         "kutu rengi": "Sarı",
-        "pin": "D6",
+        "pin": "D5",
         "ağırlık gram": 4.0,
         "co2 tasarruf gram": 7.2,
         "puan": 5
@@ -60,7 +50,7 @@ URUNLER_DB = {
         "kategori": "Plastik",
         "kutu etiketi": "Plastik Atık",
         "kutu rengi": "Sarı",
-        "pin": "D6",
+        "pin": "D5",
         "ağırlık gram": 3.5,
         "co2 tasarruf gram": 6.3,
         "puan": 5
@@ -70,7 +60,7 @@ URUNLER_DB = {
         "kategori": "Plastik",
         "kutu etiketi": "Plastik Atık",
         "kutu rengi": "Sarı",
-        "pin": "D6",
+        "pin": "D5",
         "ağırlık gram": 20.0,
         "co2 tasarruf gram": 36.0,
         "puan": 10
@@ -80,7 +70,7 @@ URUNLER_DB = {
         "kategori": "Metal",
         "kutu etiketi": "Metal Atık",
         "kutu rengi": "Mavi",
-        "pin": "D5",
+        "pin": "D6",
         "ağırlık gram": 15.0,
         "co2 tasarruf gram": 135.0,
         "puan": 25
@@ -126,10 +116,8 @@ def lookup_product(code):
     if not c:
         return None
     if c not in URUNLER_DB:
-        # Baştaki '8' atlandıysa (12 hane geldiyse) başına '8' ekle
         if len(c) == 12 and ("8" + c) in URUNLER_DB:
             c = "8" + c
-        # Baştaki '8' farklı bir rakam olarak okunduysa son 12 haneden eşleştir
         elif len(c) == 13:
             for k in URUNLER_DB:
                 if k[1:] == c[1:]:
@@ -166,15 +154,12 @@ def run_ocr(img_path):
 
 def find_code(text):
     digits = re.sub(r"\D", "", text)
-    # 1. Tam 13 hane eşleşmesi
     for c in URUNLER_DB:
         if c in digits:
             return c
-    # 2. Baştaki '8' eksik okunduysa son 12 hane (c[1:]) eşleşmesi
     for c in URUNLER_DB:
         if c[1:] in digits:
             return c
-    # 3. Ufak rakam kaymaları için son 12 hane üzerinden toleranslı kontrol
     for c in URUNLER_DB:
         sub = c[1:]
         n = len(sub)
@@ -219,7 +204,7 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 <body class="bg-slate-900 text-white min-h-screen font-sans"><div class="max-w-md mx-auto p-4">
 <div class="flex justify-between items-center bg-slate-800/90 border border-slate-700 rounded-xl px-3 py-2 mb-3 text-xs">
 <span id="conn" class="font-bold text-emerald-400">Sunucu Hazır</span>
-<span class="text-slate-400">Sürüm 2.8</span></div>
+<span class="text-slate-400">Sürüm 2.9</span></div>
 
 <div class="bg-slate-800 rounded-2xl p-4 mb-4 border border-slate-700">
 <div class="flex justify-between items-center mb-3"><span class="text-xs font-bold text-emerald-400">KAMPÜS DÖNGÜSEL ATIK</span>
@@ -255,7 +240,7 @@ HTML = """<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name=
 <h2 class="text-lg font-bold text-emerald-400 mb-2">Kutu Sensörü Aktif!</h2>
 <p class="text-sm text-slate-300 mb-4">Atığı <strong id="wb"></strong> bölmeye bırakın.</p>
 <div class="grid grid-cols-2 gap-2"><button onclick="drop(cur.bin)" class="bg-emerald-600 text-xs font-bold py-2.5 rounded-lg">Doğru Kutuya Atıldı</button>
-<button onclick="drop('YANLIS')" class="bg-rose-600 text-xs font-bold py-2.5 rounded-lg">Yanlış Kutuya Atıldı</button></div></div>
+<button onclick="drop('YANLIS')" class="bg-rose-600 text-xs font-bold py-2.5 rounded-lg">Yanlış Kutuya Atildi</button></div></div>
 
 <div id="s4" class="hidden bg-slate-800 rounded-2xl p-6 border border-slate-700 text-center">
 <h2 id="rt" class="text-xl font-bold mb-2"></h2><p id="rd" class="text-sm text-slate-300 mb-5"></p>
@@ -478,7 +463,7 @@ def esp32_check():
     if request.method == "POST":
         data = request.get_json(silent=True) or {}
         sid = int(data.get("sensor_id", 0))
-        bin_map = {1: "SARI", 2: "MAVI", 3: "YESIL"}
+        bin_map = {1: "MAVI", 2: "SARI", 3: "YESIL"}
         detected_bin = bin_map.get(sid)
         if not detected_bin:
             return jsonify({"status": "invalid_sensor"}), 400
