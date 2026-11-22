@@ -6,7 +6,7 @@ Kampüs içindeki geri dönüşüm kutularına yanlış atık atılmasını (kon
 Dijital Dönüşüm ve Sürdürülebilirlik Vaka Yarışması.pdf
 + 1
 Canlı Çalışan Prototip: https://kampus-atik.onrender.com   
-IMG_3122.jpg
+
 + 2
 GitHub Deposu: https://github.com/talusnaz/kampus-atik.git
 📌 Proje Özeti ve Çözüm Mantığı
@@ -117,7 +117,7 @@ Depoyu klonlayın: git clone [https://github.com/talusnaz/kampus-atik.git](https
 Gerekli kütüphaneleri yükleyin: pip install -r requirements.txt
 Uygulamayı başlatın: python app.py
 Tarayıcıdan [http://127.0.0.1:5001](http://127.0.0.1:5001) adresine gidin (veya doğrudan https://kampus-atik.onrender.com bağlantısından canlı demoyu test edin).   
-IMG_3122.jpg
+
 + 2
 2. Donanım Bağlantısı ve ESP8266 Pin Eşleştirmesi (Sıfır Atık Uyumlu)
 Sarı Kutu (Plastik Atık): NodeMCU D5 pini (Sensör ID 2)
